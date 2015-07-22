@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import time
 from copy import deepcopy
 
 import docker
@@ -54,9 +55,10 @@ class Blockade(object):
     def _start_container(self, blockade_id, container, veth_device):
         container_name = docker_container_name(blockade_id, container.name)
         volumes = list(container.volumes.values()) or None
+        ports = [int(v) for (k, v) in container.expose_ports.iteritems()]
         response = self.docker_client.create_container(
             container.image, command=container.command, name=container_name,
-            ports=container.expose_ports, volumes=volumes, hostname=container.name,
+            ports=ports, volumes=volumes, hostname=container.name,
             environment=container.environment)
         container_id = response['Id']
 
@@ -65,7 +67,7 @@ class Blockade(object):
 
         lxc_conf = deepcopy(container.lxc_conf)
         lxc_conf['lxc.network.veth.pair'] = veth_device
-        self.docker_client.start(container_id, lxc_conf=lxc_conf, links=links,
+        self.docker_client.start(container=container_id, lxc_conf=lxc_conf, links=links,
             binds=container.volumes, port_bindings=container.publish_ports)
         return container_id
 
